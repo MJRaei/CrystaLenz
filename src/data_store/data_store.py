@@ -1,0 +1,1 @@
+XRD_DATA_STORE = {}

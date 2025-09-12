@@ -1,0 +1,16 @@
+.env
+
+__pycache__/
+
+.venv/
+
+web/.next/
+web/node_modules/
+
+retriever/google_download/downloaded_pdfs/
+retriever/paper_orgenizer_agent/output/
+retriever/text_extractor/extracted_texts/
+
+xrd_outputs/
+
+papers/

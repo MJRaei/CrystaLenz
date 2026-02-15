@@ -4,8 +4,9 @@
 
 CrystaLens is an AI-assisted workflow for X-ray diffraction (XRD) analysis. It combines an agentic backend (Starlette + Google ADK) with a modern Next.js web UI. The system can:
 
-- Run an end-to-end XRD pipeline: load and preprocess data, detect peaks, compute Scherrer/Williamson–Hall size/strain, cross-check against Materials Project references, and generate plots/reports.
-- Mine research papers: search Google Programmable Search (CSE), download PDFs, and extract text for quick literature triage.
+- **Run an end-to-end XRD pipeline**: load and preprocess data, detect peaks, compute Scherrer/Williamson–Hall size/strain, cross-check against Materials Project references, and generate plots/reports.
+- **Mine research papers**: search Google Programmable Search (CSE), download PDFs, and extract text for quick literature triage.
+- **RAG (Retrieval-Augmented Generation)**: build a FAISS vector database from extracted paper texts using OpenAI embeddings, then semantically retrieve the most relevant chunks to augment agent responses with cited, evidence-based context.
 - Stream results to the web UI as the pipeline progresses.
 
 <p align="center">
@@ -69,15 +70,18 @@ GOOGLE_CSE_ID=...
 # Materials Project (XRD reference patterns)
 MP_API_KEY=...
 
+# RAG embeddings (OpenAI text-embedding-3-large)
+OPENAI_API_KEY=...
+
 # Optional – model providers used by google-adk/google-genai
 # GOOGLE_API_KEY=...
 # GOOGLE_GENAI_API_KEY=...
-# OPENAI_API_KEY=...
 ```
 
 Notes:
 
 - Paper search requires both `GOOGLE_CSE_API_KEY` and `GOOGLE_CSE_ID`.
+- RAG vector store creation requires `OPENAI_API_KEY` (for `text-embedding-3-large` embeddings).
 - Materials Project lookups require `MP_API_KEY`.
 - Static plot export uses Plotly + Kaleido (already in `requirements.txt`).
 
@@ -94,7 +98,6 @@ Notes:
 ### Agent graph (simplified)
 
 - `root_agent` (`src/agent.py`)
-
   - `sequential_pipeline_agent`
     - `parallel_research_analysis_agent`
       - `research_specialist_agent` (paper mining)
@@ -102,7 +105,6 @@ Notes:
     - `final_analizer_agent`
 
 - XRD pipeline (`src/agents/xrd_agent/agent.py`)
-
   - `data_loader_agent` → `xrd_hyperparameter_optimizer_pipeline` (loop, max_iterations=1)
     - `hyperparameter_optimizer_agent`
     - `xrd_analysis_pipeline`:
@@ -116,6 +118,10 @@ Notes:
   - `search_papers.py` → Google CSE (requires `GOOGLE_CSE_*`)
   - `download_pdfs.py` → downloads to `papers/downloaded_pdfs/`
   - `extract_texts_from_pdfs.py` → saves text to `papers/extracted_texts/`
+
+- RAG pipeline (`src/agents/research_agent/sub_agents/retriever/`)
+  - `create_vector_store.py` → chunks extracted texts (1200 chars, 200 overlap), embeds with OpenAI `text-embedding-3-large`, L2-normalizes, and stores in a FAISS `IndexFlatIP` index at `papers/vector_store/`
+  - `retrieve_data.py` → embeds the user query with the same model, searches the FAISS index for top-k similar chunks, and returns ranked results with source metadata and similarity scores
 
 ---
 
@@ -155,7 +161,7 @@ CrystaLens/
 │   ├── data_store/                # In-memory store for XRD runs
 │   └── schemas/                   # Shared schemas
 ├── web/                           # Next.js 14 UI
-├── papers/                        # Downloaded PDFs and extracted texts
+├── papers/                        # Downloaded PDFs, extracted texts, and FAISS vector store
 ├── sample_data/                   # Example XRD CSVs
 ├── xrd_outputs/                   # Generated HTML/PNG plots and reports
 └── tests/                         # Pytests for XRD tools
@@ -178,6 +184,7 @@ pytest -q
 
 - Can’t fetch Materials Project references: ensure `MP_API_KEY` is set and valid.
 - Paper search returns error: set `GOOGLE_CSE_API_KEY` and `GOOGLE_CSE_ID` in `.env`.
+- Vector store creation fails: ensure `OPENAI_API_KEY` is set (used for embedding generation).
 - WebSocket not connecting: confirm the UI `NEXT_PUBLIC_API_WS` matches your backend URL/port.
 - Static image export fails: ensure `kaleido` is installed (included) and the process has write access to `xrd_outputs/`.
 
@@ -188,6 +195,7 @@ pytest -q
 - Backend: Python, Starlette, Uvicorn, Pydantic, Google ADK, google-genai
 - XRD: NumPy, SciPy, lmfit, pymatgen, mp-api
 - Visualization: Plotly + Kaleido
+- RAG: FAISS (faiss-cpu), OpenAI Embeddings (text-embedding-3-large), NumPy
 - Research miner: requests, PyMuPDF (fitz)
 - Frontend: Next.js 14, React 18, SWR, Tailwind CSS
 
@@ -204,3 +212,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - Materials Project and `pymatgen` for structures and diffraction simulation.
 - Plotly for interactive and static plotting.
 - Google ADK for the agent orchestration runtime.
+- Meta FAISS for vector similarity search.
+- OpenAI for embedding generation.

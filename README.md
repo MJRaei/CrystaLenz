@@ -8,6 +8,10 @@ CrystaLens is an AI-assisted workflow for X-ray diffraction (XRD) analysis. It c
 - Mine research papers: search Google Programmable Search (CSE), download PDFs, and extract text for quick literature triage.
 - Stream results to the web UI as the pipeline progresses.
 
+<p align="center">
+  <img src="docs/media/workflow.png" alt="CrystaLens workflow diagram" width="800">
+</p>
+
 ---
 
 ## Quick start
